@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/format.dart';
 import '../core/theme.dart';
+import '../data/arabic_names.dart';
 import '../data/models.dart';
 import '../data/repo.dart';
 import 'voucher_view_page.dart';
@@ -291,6 +292,7 @@ class _ItemDialog extends StatefulWidget {
 
 class _ItemDialogState extends State<_ItemDialog> {
   late final name = TextEditingController(text: widget.item?.name ?? widget.name);
+  late final nameAr = TextEditingController(text: widget.item?.nameAr ?? '');
   late final nameEn = TextEditingController(text: widget.item?.nameEn ?? '');
   late final code = TextEditingController(text: widget.item?.code ?? '');
   late final unit = TextEditingController(text: widget.item?.unit ?? 'قطعة');
@@ -306,6 +308,7 @@ class _ItemDialogState extends State<_ItemDialog> {
       final it = await Repo.i.saveItem(Item(
         id: widget.item?.id,
         name: name.text,
+        nameAr: nameAr.text,
         nameEn: nameEn.text,
         code: code.text,
         unit: unit.text,
@@ -319,7 +322,7 @@ class _ItemDialogState extends State<_ItemDialog> {
   }
 
   Future<void> _delete() async {
-    if (!await confirm(context, 'مسح الصنف', 'متأكد إنك عايز تمسح «${widget.item!.name}»؟', ok: 'مسح', danger: true)) return;
+    if (!await confirm(context, 'مسح الصنف', 'متأكد إنك عايز تمسح «${widget.item!.title}»؟', ok: 'مسح', danger: true)) return;
     try {
       await Repo.i.deleteItem(widget.item!.id!);
       if (mounted) Navigator.pop(context);
@@ -335,9 +338,30 @@ class _ItemDialogState extends State<_ItemDialog> {
           width: 460,
           child: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: name, autofocus: true, decoration: const InputDecoration(labelText: 'اسم الصنف *')),
+              TextField(
+                controller: name,
+                autofocus: true,
+                decoration: const InputDecoration(labelText: 'اسم الصنف *', helperText: 'الاسم الأصلي زي ما في فاتورة المورد'),
+              ),
               const SizedBox(height: 12),
-              TextField(controller: nameEn, decoration: const InputDecoration(labelText: 'الاسم بالإنجليزي (اختياري)')),
+              TextField(
+                controller: nameAr,
+                decoration: InputDecoration(
+                  labelText: 'الاسم بالعربي',
+                  helperText: 'اللي بيظهر في البرنامج. سيبه فاضي لو الاسم الأصلي عربي',
+                  suffixIcon: IconButton(
+                    tooltip: 'اقتراح من الاسم الأصلي',
+                    icon: const Icon(Icons.auto_fix_high),
+                    onPressed: () {
+                      final s = ArabicNames.suggest(name.text);
+                      if (s.isEmpty) return setState(() => error = 'مش لاقي اقتراح للاسم ده، اكتبه بإيدك');
+                      setState(() => (nameAr.text = s, error = null));
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(controller: nameEn, decoration: const InputDecoration(labelText: 'اسم تاني للبحث (اختياري)')),
               const SizedBox(height: 12),
               TextField(controller: code, decoration: const InputDecoration(labelText: 'كود المورد (اختياري)')),
               const SizedBox(height: 12),
@@ -462,7 +486,7 @@ Future<Item?> pickItem(BuildContext context) async => (await pickFrom<ItemStock>
       context,
       title: 'اختار الصنف',
       load: (q) => Repo.i.stock(q: q, includeEmpty: true),
-      label: (s) => s.item.name,
+      label: (s) => s.item.title,
       sub: (s) => s.item.extra,
       trailing: (s) => Text('${fmtQty(s.balance)} ${s.item.unit}',
           style: TextStyle(fontWeight: FontWeight.w700, color: s.balance < 0 ? Colors.red : null)),

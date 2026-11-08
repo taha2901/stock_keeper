@@ -108,7 +108,8 @@ enum ReportMode {
   final String label, title;
 }
 
-/// Sums movements per item, for the "grouped" report view.
+/// Sums movements per item (the inbound / outbound reports are always by item).
+/// Each row keeps its movements, oldest first, for the expandable detail.
 List<GroupRow> groupMoves(List<MovementRow> rows) {
   final byItem = <int, List<MovementRow>>{};
   for (final r in rows) {
@@ -118,48 +119,30 @@ List<GroupRow> groupMoves(List<MovementRow> rows) {
     for (final l in byItem.values)
       GroupRow(
         l.first.item,
-        l.first.unit,
         l.fold(0.0, (a, r) => a + r.qty),
         l.map((r) => r.voucherId).toSet().length,
         l.map((r) => r.date).reduce((a, b) => a.isAfter(b) ? a : b),
         l.fold(0.0, (a, r) => a + r.cost.value),
         l.any((r) => r.cost.missing),
+        [...l]..sort((a, b) => a.date.compareTo(b.date)),
       ),
-  ]..sort((a, b) => a.item.compareTo(b.item));
+  ]..sort((a, b) => a.item.title.toLowerCase().compareTo(b.item.title.toLowerCase()));
 }
-
-/// Sums movements per supplier / site, biggest value first.
-List<PartyTotal> groupParties(List<MovementRow> rows) {
-  final by = <String, List<MovementRow>>{};
-  for (final r in rows) {
-    by.putIfAbsent(r.party, () => []).add(r);
-  }
-  return [
-    for (final e in by.entries)
-      PartyTotal(e.key, e.value.map((r) => r.voucherId).toSet().length, e.value.length,
-          e.value.fold(0.0, (a, r) => a + r.cost.value), e.value.any((r) => r.cost.missing)),
-  ]..sort((a, b) => b.value.compareTo(a.value));
-}
-
-enum ReportView { detail, item, party }
 
 class ReportsCubit extends LoadCubit<ReportData> {
   DateTimeRange? range = DateTimeRange(start: DateTime(today().year, today().month), end: today());
   ReportMode mode = ReportMode.inbound;
   Party? party, recipient;
   String q = '', ref = '';
-  ReportView view = ReportView.detail;
 
   /// Supplier/site, recipient and invoice filters only apply to a single direction.
   bool get singleType => mode == ReportMode.inbound || mode == ReportMode.outbound;
-  ReportView get activeView => singleType ? view : ReportView.detail;
 
   void setRange(DateTimeRange? r) => (range = r, reload());
   void setMode(ReportMode m) => (mode = m, party = null, recipient = null, ref = '', reload());
   void setParty(Party? p) => (party = p, reload());
   void setRecipient(Party? p) => (recipient = p, reload());
   void setRef(String v) => (ref = v, reload());
-  void setView(ReportView v) => (view = v, reload());
   void search(String v) => (q = v, reload());
 
   @override

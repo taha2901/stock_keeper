@@ -119,7 +119,8 @@ class ExcelService {
             int x => IntCellValue(x),
             double x => DoubleCellValue(x),
             DateTime x => TextCellValue(fmtDate(x)),
-            _ => TextCellValue('$v'),
+            // a line break doesn't show in a cell without wrapping: keep both parts readable
+            _ => TextCellValue('$v'.replaceAll('\n', ' | ')),
           }).toList());
     }
     return _forceRtl(excel.encode()!);

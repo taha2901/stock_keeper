@@ -36,7 +36,7 @@ class ItemLedgerPage extends StatelessWidget {
               data: rows == null
                   ? null
                   : ExportData(
-                      title: 'كارت صنف - ${it.name}',
+                      title: 'كارت صنف - ${it.title}',
                       subtitle: 'الوحدة: ${it.unit} - الرصيد الحالي: ${fmtQty(bal)}',
                       headers: const ['التاريخ', 'النوع', 'رقم السند', 'الجهة', 'رقم الفاتورة', 'وارد', 'صادر', 'الرصيد', 'السعر', 'القيمة', 'قيمة الرصيد'],
                       rows: [
@@ -50,7 +50,7 @@ class ItemLedgerPage extends StatelessWidget {
             Card(
               child: ListTile(
                 contentPadding: const EdgeInsets.all(16),
-                title: Text(it.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                title: Text(it.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                 subtitle: it.extra.isEmpty ? null : Text(it.extra),
               ),
             ),

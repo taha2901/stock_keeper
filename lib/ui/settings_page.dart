@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../data/repo.dart';
 import '../services/license_service.dart';
 import 'activation_page.dart';
+import 'item_names_page.dart';
 import '../services/backup_service.dart';
 import '../services/daily_service.dart';
 import '../services/pdf_service.dart';
@@ -78,6 +79,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     },
             ),
           ]),
+          const SizedBox(height: 12),
+          const ItemNamesCard(),
           const SizedBox(height: 12),
           ListCard(title: 'بيانات الطباعة', children: [
             Padding(

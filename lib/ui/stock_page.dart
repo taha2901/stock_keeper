@@ -18,7 +18,7 @@ class StockPage extends StatelessWidget {
           title: 'أرصدة المخزون',
           headers: const ['الصنف', 'الكود', 'الوحدة', 'وارد', 'صادر', 'الرصيد', 'قيمة الرصيد', 'حد التنبيه'],
           rows: [
-            for (final s in list) [s.item.name, s.item.code, s.item.unit, s.inQty, s.outQty, s.balance, s.value, s.item.minQty],
+            for (final s in list) [s.item.label, s.item.code, s.item.unit, s.inQty, s.outQty, s.balance, s.value, s.item.minQty],
             ['الإجمالي', null, null, null, null, null, list.fold<double>(0.0, (a, s) => a + s.value), null],
           ],
         );
@@ -64,7 +64,7 @@ class StockPage extends StatelessWidget {
                             ListCard(children: [
                               for (final it in list)
                                 ListTile(
-                                  title: Text(it.item.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                  title: Text(it.item.title, style: const TextStyle(fontWeight: FontWeight.w600)),
                                   subtitle: Text(it.item.extra.isEmpty ? 'وارد ${fmtQty(it.inQty)}  •  صادر ${fmtQty(it.outQty)}' : it.item.extra,
                                       maxLines: 1, overflow: TextOverflow.ellipsis),
                                   trailing: Row(mainAxisSize: MainAxisSize.min, children: [

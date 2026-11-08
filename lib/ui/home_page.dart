@@ -39,7 +39,7 @@ class HomePage extends StatelessWidget {
                       for (final it in d.low.take(8))
                         ListTile(
                           leading: const Icon(Icons.warning_amber_rounded, color: kOut),
-                          title: Text(it.item.name),
+                          title: Text(it.item.title),
                           trailing: Text('${fmtQty(it.balance)} ${it.item.unit}',
                               style: const TextStyle(fontWeight: FontWeight.w700, color: kOut)),
                           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ItemLedgerPage(stock: it))),

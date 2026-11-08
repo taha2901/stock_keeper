@@ -46,7 +46,7 @@ class _TransferPageState extends State<TransferPage> {
       context,
       title: 'اختار صنف من المصدر',
       load: (q) async => (await Repo.i.stock(q: q, warehouseId: fromWh)).where((s) => s.balance > 0).toList(),
-      label: (s) => s.item.name,
+      label: (s) => s.item.title,
       sub: (s) => s.item.extra,
       trailing: (s) => Text('${fmtQty(s.balance)} ${s.item.unit}', style: const TextStyle(fontWeight: FontWeight.w700)),
     );
@@ -181,7 +181,9 @@ class _TransferPageState extends State<TransferPage> {
         const SizedBox(width: 10),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(l.stock.item.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+            Text(l.stock.item.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+            if (l.stock.item.extra.isNotEmpty)
+              Text(l.stock.item.extra, style: const TextStyle(fontSize: 11.5, color: Colors.black45), maxLines: 1, overflow: TextOverflow.ellipsis),
             Text('المتاح في المصدر: ${fmtQty(avail)} ${l.stock.item.unit}',
                 style: TextStyle(fontSize: 12, color: over ? Colors.red : Colors.black54)),
           ]),

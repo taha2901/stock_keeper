@@ -25,7 +25,7 @@ class DailyService {
       'المخزن: ${wh?.name ?? ''}  -  يوم ${fmtDate(d)}',
       const ['الصنف', 'الوحدة', 'رصيد النظام', 'العدد الفعلي', 'الفرق'],
       [
-        for (final s in stock) [s.item.name, s.item.unit, s.balance, '', ''],
+        for (final s in stock) [s.item.label, s.item.unit, s.balance, '', ''],
       ],
     );
   }

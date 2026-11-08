@@ -48,7 +48,7 @@ void main() {
     final fromSanad = await r.movements(type: VType.inbound, partyId: sup.id);
     expect(fromSanad.length, 3);
     final grouped = groupMoves(fromSanad);
-    final ga = grouped.firstWhere((g) => g.item == a.name);
+    final ga = grouped.firstWhere((g) => g.item.id == a.id);
     expect([ga.total, ga.times], [15, 2]);
     expect(ga.last, DateTime(2026, 9, 5));
 

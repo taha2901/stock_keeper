@@ -73,13 +73,19 @@ class _VoucherViewPageState extends State<VoucherViewPage> {
                   headers: const ['م', 'الصنف', 'الكود', 'الوحدة', 'الكمية', 'السعر', 'الإجمالي', 'ملاحظات'],
                   rows: [
                     for (var i = 0; i < v.lines.length; i++)
-                      [i + 1, v.lines[i].item.name, v.lines[i].item.code, v.lines[i].item.unit, v.lines[i].qty, priceLabel(v.lines[i].cost), v.lines[i].cost.value, v.lines[i].note],
+                      [i + 1, v.lines[i].item.label, v.lines[i].item.code, v.lines[i].item.unit, v.lines[i].qty, priceLabel(v.lines[i].cost), v.lines[i].cost.value, v.lines[i].note],
                     ['الإجمالي', null, null, null, null, null, v.total, null],
                   ],
                 ),
               ),
               IconButton(tooltip: 'طباعة', icon: const Icon(Icons.print_outlined), onPressed: () => PdfService.printVoucher(v.id!)),
-              IconButton(tooltip: 'تعديل', icon: const Icon(Icons.edit_outlined), onPressed: () => openVoucherForm(context, v.type, id: v.id)),
+              IconButton(
+                tooltip: v.isTransfer ? 'التحويل مينفعش يتعدل' : 'تعديل',
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: v.isTransfer
+                    ? () => snack(context, 'ده تحويل بين المخازن، مينفعش يتعدل. امسحه واعمل تحويل جديد بالكميات الصح.', error: true)
+                    : () => openVoucherForm(context, v.type, id: v.id),
+              ),
               IconButton(tooltip: 'مسح', icon: const Icon(Icons.delete_outline), onPressed: () => _delete(v)),
             ],
             body: ListView(padding: const EdgeInsets.all(16), children: [
@@ -103,7 +109,7 @@ class _VoucherViewPageState extends State<VoucherViewPage> {
                 for (var i = 0; i < v.lines.length; i++)
                   ListTile(
                     leading: CircleAvatar(radius: 14, backgroundColor: kBg, child: Text('${i + 1}', style: const TextStyle(fontSize: 12))),
-                    title: Text(v.lines[i].item.name),
+                    title: Text(v.lines[i].item.title),
                     subtitle: Text([
                       priceLabel(v.lines[i].cost, sep: '  +  '),
                       v.lines[i].item.extra,

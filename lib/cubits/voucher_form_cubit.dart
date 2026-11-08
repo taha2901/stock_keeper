@@ -257,6 +257,7 @@ class VoucherFormCubit extends Cubit<VForm> {
       final match = items.where((it) {
         final code = it.code.toLowerCase().replaceAll('[', '').replaceAll(']', '').trim();
         return it.name.toLowerCase() == t ||
+            (it.hasAr && it.nameAr.trim().toLowerCase() == t) ||
             (it.nameEn.isNotEmpty && it.nameEn.toLowerCase() == t) ||
             (code.isNotEmpty && (code == t || code == bracket));
       }).firstOrNull;
@@ -292,15 +293,15 @@ class VoucherFormCubit extends Cubit<VForm> {
     } else {
       for (final l in s.lines) {
         if (l.qty <= 0) {
-          err = 'اكتب كمية للصنف: ${l.item.name}';
+          err = 'اكتب كمية للصنف: ${l.item.title}';
           break;
         }
         if (l.price != null && l.price! < 0) {
-          err = 'السعر مينفعش يبقى بالسالب: ${l.item.name}';
+          err = 'السعر مينفعش يبقى بالسالب: ${l.item.title}';
           break;
         }
         if (!s.type.isIn && l.qty > l.available + 1e-6) {
-          err = 'الكمية أكبر من الرصيد: ${l.item.name}\nالمتاح ${fmtQty(l.available)} ${l.item.unit}';
+          err = 'الكمية أكبر من الرصيد: ${l.item.title}\nالمتاح ${fmtQty(l.available)} ${l.item.unit}';
           break;
         }
       }

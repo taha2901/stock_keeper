@@ -336,7 +336,8 @@ class _LineRowState extends State<_LineRow> {
       const SizedBox(width: 10),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(l.item.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(l.item.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+          if (l.item.extra.isNotEmpty) Text(l.item.extra, style: const TextStyle(fontSize: 11.5, color: Colors.black45), maxLines: 1, overflow: TextOverflow.ellipsis),
           Text(
             'الرصيد: ${fmtQty(l.available)} ← ${fmtQty(after)} ${l.item.unit}${isIn && l.price != null ? '  •  ${fmtMoney(l.total)} ريال' : ''}',
             style: TextStyle(fontSize: 12, color: over ? Colors.red : Colors.black54, fontWeight: over ? FontWeight.w700 : null),

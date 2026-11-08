@@ -7,6 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../core/format.dart';
+import '../data/models.dart';
 import '../data/repo.dart';
 
 class PdfService {
@@ -183,7 +184,7 @@ class PdfService {
             for (var i = 0; i < v.lines.length; i++)
               [
                 _w('${i + 1}'),
-                _w([v.lines[i].item.name, if (v.lines[i].item.code.isNotEmpty) v.lines[i].item.code, if (v.lines[i].item.nameEn.isNotEmpty) v.lines[i].item.nameEn].join('\n')),
+                _w(_itemCell(v.lines[i].item)),
                 _w(v.lines[i].item.unit),
                 _w(fmtQty(v.lines[i].qty)),
                 _w(priceLabel(v.lines[i].cost), style: const pw.TextStyle(fontSize: 10)),
@@ -214,6 +215,14 @@ class PdfService {
     ));
     return doc.save();
   }
+
+  /// Item cell on a printed voucher: the shown name, then the original name / code.
+  static String _itemCell(Item it) => [
+        it.title,
+        if (Item.mode == NameMode.both && it.hasAr) it.name,
+        if (it.code.isNotEmpty && !it.name.contains(it.code)) it.code,
+        if (it.nameEn.isNotEmpty) it.nameEn,
+      ].join('\n');
 
   static Future<void> printVoucher(int id) async {
     final v = await Repo.i.voucher(id);

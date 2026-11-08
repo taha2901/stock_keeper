@@ -7,6 +7,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import '../data/arabic_names.dart';
+
 /// SQLite database (one file on the device). The stock balance is never stored:
 /// it is always computed from the voucher lines, so it can't drift.
 class AppDb {
@@ -33,7 +35,7 @@ class AppDb {
   static Future<void> open() async {
     _db = await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onConfigure: (d) => d.execute('PRAGMA foreign_keys = ON'),
       onCreate: _create,
       onUpgrade: _upgrade,
@@ -61,6 +63,29 @@ class AppDb {
       await d.insert('settings', {'key': 'current_wh', 'value': '\$id'}, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     if (from < 5) await d.execute('ALTER TABLE vouchers ADD COLUMN transfer_id INTEGER');
+    if (from < 6) {
+      await d.execute("ALTER TABLE items ADD COLUMN name_ar TEXT NOT NULL DEFAULT ''");
+      await fillArabicNames(d);
+    }
+  }
+
+  /// Gives every item that has no Arabic name yet the suggested one. Never touches
+  /// the original name, and never overwrites an Arabic name the keeper typed.
+  static Future<int> fillArabicNames(DatabaseExecutor d) async {
+    final rows = await d.query('items', columns: ['id', 'name', 'code', 'name_ar']);
+    final taken = <String>{
+      for (final r in rows)
+        if ((r['name_ar'] as String).trim().isNotEmpty) (r['name_ar'] as String).trim() else if (ArabicNames.isArabic(r['name'] as String)) (r['name'] as String).trim(),
+    };
+    final todo = [
+      for (final r in rows)
+        if ((r['name_ar'] as String).trim().isEmpty) (id: r['id'] as int, name: r['name'] as String, code: r['code'] as String),
+    ];
+    final names = ArabicNames.uniqueAll(todo, taken: taken);
+    final b = d.batch();
+    names.forEach((id, n) => b.update('items', {'name_ar': n}, where: 'id = ?', whereArgs: [id]));
+    await b.commit(noResult: true);
+    return names.length;
   }
 
   static Future<void> _create(Database d, int version) async {
@@ -73,6 +98,7 @@ class AppDb {
       ..execute('''CREATE TABLE items(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        name_ar TEXT NOT NULL DEFAULT '',
         name_en TEXT NOT NULL DEFAULT '',
         code TEXT NOT NULL DEFAULT '',
         unit TEXT NOT NULL DEFAULT 'قطعة',

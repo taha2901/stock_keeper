@@ -13,6 +13,7 @@ Future<void> main() async {
   await AppDb.init();
   Repo.i.writable = await LicenseService.load();
   await Repo.i.loadCurrentWarehouse();
+  await Repo.i.loadNameMode();
   runApp(const App());
 }
 

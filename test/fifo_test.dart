@@ -102,16 +102,27 @@ void main() {
     expect(v.missing, isFalse);
   });
 
-  test('same-day receipt is available to a same-day issue; issue before any receipt is unpriced', () async {
+  test('same-day receipt is available to a same-day issue; an issue before its receipt is priced by it', () async {
     final c = await r.saveItem(const Item(name: 'جلبة'));
     final sup = await r.saveParty(const Party(type: PartyType.supplier, name: 'مورد 3'));
     final site = await r.saveParty(const Party(type: PartyType.site, name: 'موقع 3'));
 
     final early = await r.saveVoucher(Voucher(type: VType.outbound, date: DateTime(2026, 5, 1), partyId: site.id, lines: [VoucherLine(c, 2)]));
     final sameDayOut = await r.saveVoucher(Voucher(type: VType.outbound, date: DateTime(2026, 5, 2), partyId: site.id, lines: [VoucherLine(c, 1)]));
+
+    // before the receipt exists, the early issue has no price
+    expect((await r.voucher(early)).missing, isTrue);
+
     await r.saveVoucher(Voucher(type: VType.inbound, date: DateTime(2026, 5, 2), partyId: sup.id, lines: [VoucherLine(c, 3, '', 4)]));
 
     expect((await r.voucher(sameDayOut)).total, 4);
-    expect((await r.voucher(early)).missing, isTrue);
+    // the receipt covers the earlier shortage first, so the early issue gets its price
+    final e = await r.voucher(early);
+    expect(e.missing, isFalse);
+    expect(e.total, 8);
+    // and nothing is left over: stock value matches the zero balance (it used to show 8)
+    final st = (await r.stock(q: 'جلبة')).single;
+    expect(st.balance, 0);
+    expect(st.value, 0);
   });
 }

@@ -32,19 +32,40 @@ class Warehouse {
   Map<String, Object?> toMap() => {'name': name.trim()};
 }
 
+/// How item names are shown across the app. Chosen by the keeper in the settings.
+enum NameMode {
+  ar('ar', 'عربي'),
+  en('en', 'إنجليزي'),
+  both('both', 'عربي + إنجليزي');
+
+  const NameMode(this.key, this.label);
+  final String key, label;
+  static NameMode of(String k) => values.firstWhere((e) => e.key == k, orElse: () => both);
+}
+
 class Item {
   final int? id;
-  final String name, nameEn, code, unit;
+
+  /// The original name (as on the supplier's invoice, usually English).
+  final String name;
+
+  /// Arabic name shown to the keeper. Empty = not set, the original name is shown.
+  final String nameAr;
+  final String nameEn, code, unit;
   final double minQty;
 
   /// Suggested price, pre-filled on receipts. FIFO only ever uses the price saved on the receipt.
   final double? price;
 
-  const Item({this.id, required this.name, this.nameEn = '', this.code = '', this.unit = 'قطعة', this.minQty = 0, this.price});
+  /// Current display mode (loaded from the settings at startup).
+  static NameMode mode = NameMode.both;
+
+  const Item({this.id, required this.name, this.nameAr = '', this.nameEn = '', this.code = '', this.unit = 'قطعة', this.minQty = 0, this.price});
 
   factory Item.fromMap(Map<String, Object?> m) => Item(
         id: m['id'] as int,
         name: m['name'] as String,
+        nameAr: (m['name_ar'] as String?) ?? '',
         nameEn: m['name_en'] as String,
         code: m['code'] as String,
         unit: m['unit'] as String,
@@ -54,6 +75,7 @@ class Item {
 
   Map<String, Object?> toMap() => {
         'name': name.trim(),
+        'name_ar': nameAr.trim(),
         'name_en': nameEn.trim(),
         'code': code.trim(),
         'unit': unit.trim().isEmpty ? 'قطعة' : unit.trim(),
@@ -61,8 +83,24 @@ class Item {
         'price': price,
       };
 
-  /// Secondary line shown under the item name (English name / supplier code).
-  String get extra => [code, nameEn].where((e) => e.isNotEmpty).join(' • ');
+  Item copyWith({String? nameAr}) =>
+      Item(id: id, name: name, nameAr: nameAr ?? this.nameAr, nameEn: nameEn, code: code, unit: unit, minQty: minQty, price: price);
+
+  bool get hasAr => nameAr.trim().isNotEmpty;
+
+  /// The main name on screen, following [mode].
+  String get title => mode == NameMode.en || !hasAr ? name : nameAr;
+
+  /// Secondary line under [title]: the English name in "both" mode, otherwise the code.
+  String get extra {
+    String join(List<String> l) => l.where((e) => e.isNotEmpty).join(' • ');
+    if (hasAr && mode == NameMode.both) return join([name, nameEn]); // the English name already holds the code
+    if (hasAr && mode == NameMode.ar) return join([code, nameEn]);
+    return join([if (!name.contains(code)) code, nameEn]);
+  }
+
+  /// One cell in exports and printouts: Arabic and English on two lines in "both" mode.
+  String get label => mode == NameMode.both && hasAr ? '$nameAr\n$name' : title;
 }
 
 /// Part of a line valued at one price. A null price means no price was entered.
@@ -192,32 +230,53 @@ class LedgerRow {
 }
 
 class MovementRow {
-  final int voucherId, number, itemId;
+  final int voucherId, number;
+  final Item item;
   final VType type;
   final DateTime date;
-  final String item, unit, party, recipient, refNo;
+  final String party, recipient, refNo;
+
+  /// Set for a transfer between warehouses ("تحويل إلى: ...").
+  final String transfer;
   final double qty;
   final LineCost cost;
-  const MovementRow(this.voucherId, this.number, this.itemId, this.type, this.date, this.item, this.unit, this.party, this.recipient, this.refNo, this.qty, this.cost);
+  const MovementRow(this.voucherId, this.number, this.item, this.type, this.date, this.party, this.recipient, this.refNo, this.qty, this.cost,
+      [this.transfer = '']);
+
+  int get itemId => item.id!;
+  String get unit => item.unit;
+  bool get isTransfer => transfer.isNotEmpty;
+
+  /// Supplier / site, or the transfer description.
+  String get who => isTransfer ? transfer : party;
 }
 
-/// One item summed over a filtered set of movements.
+/// One item summed over a filtered set of movements, with the movements themselves.
 class GroupRow {
-  final String item, unit;
+  final Item item;
   final double total, value;
   final int times;
   final DateTime last;
   final bool missing;
-  const GroupRow(this.item, this.unit, this.total, this.times, this.last, this.value, this.missing);
+  final List<MovementRow> moves;
+  const GroupRow(this.item, this.total, this.times, this.last, this.value, this.missing, [this.moves = const []]);
+  String get unit => item.unit;
+
+  /// Value per unit over the priced quantity (null when nothing is priced).
+  double? get avgPrice => avgOf(moves);
 }
 
-/// One supplier / site summed over a filtered set of movements.
-class PartyTotal {
-  final String party;
-  final int vouchers, lines;
-  final double value;
-  final bool missing;
-  const PartyTotal(this.party, this.vouchers, this.lines, this.value, this.missing);
+/// Average unit price over the priced part of [rows].
+double? avgOf(Iterable<MovementRow> rows) {
+  var q = 0.0, v = 0.0;
+  for (final r in rows) {
+    for (final s in r.cost.slices) {
+      if (s.price == null) continue;
+      q += s.qty;
+      v += s.value;
+    }
+  }
+  return q < 1e-9 ? null : v / q;
 }
 
 /// One item in the balance report for a period.
@@ -225,13 +284,22 @@ class BalanceRow {
   final Item item;
   final double opening, inQty, outQty, openingValue, inValue, outValue;
   final bool missing;
-  const BalanceRow(this.item, this.opening, this.inQty, this.outQty, this.openingValue, this.inValue, this.outValue, this.missing);
+
+  /// The item's receipts and issues inside the period, oldest first.
+  final List<MovementRow> moves;
+
+  /// What is left at the end of the period, by purchase price (FIFO layers).
+  final LineCost left;
+  const BalanceRow(this.item, this.opening, this.inQty, this.outQty, this.openingValue, this.inValue, this.outValue, this.missing,
+      [this.moves = const [], this.left = LineCost.none]);
   double get closing {
     final v = opening + inQty - outQty;
     return v.abs() < 1e-6 ? 0 : v;
   }
 
   double get closingValue => openingValue + inValue - outValue;
+  Iterable<MovementRow> get ins => moves.where((m) => m.type.isIn);
+  Iterable<MovementRow> get outs => moves.where((m) => !m.type.isIn);
 }
 
 class HomeStats {
