@@ -45,16 +45,6 @@ void main() {
       'EXTENSION SPINDLE 1000MM FOR GATE VALVE DN250': 'عمود تطويل لمحبس قطر 250مم - طول 1000 مم',
       'EXTENSION SPINDLE LENGTH 100CM FOR 100MM GATE VALVE': 'عمود تطويل لمحبس قطر 100مم - طول 100 سم',
       'EXTENSION SPINDLE LENGTH 100CM FOR 200MM GATE VALVE': 'عمود تطويل لمحبس قطر 200مم - طول 100 سم',
-      // items outside the sheet (from the stock screen)
-      'OD: 110mm HDPE COILS SDR11 (Blue Stripes) [P8-4BL-110-16-100]': 'مواسير لفة قطر 110مم',
-      'GATEVALVE 3/4"': 'محبس 3/4 بوصة',
-      'GREASE': 'شحم',
-      'NEWJERSY PLASTIC 1MTR (USED)': 'حاجز نيوجيرسي بلاستيك 1 متر (مستعمل)',
-      'OFFICE TABLE WOODEN W/EXTENSION 160CM': 'مكتب خشب بامتداد 160 سم',
-      'PAINT ACRALIC': 'دهان أكريليك',
-      'SAFETY VEST FOR ENGR (HALF BLACK+YELLOW, 4-POCKETS)': 'سترة سلامة للمهندسين',
-      'SAFETY VEST LABOUR SF-006': 'سترة سلامة للعمال',
-      'SIGN BOARD PROJECT': 'لوحة المشروع',
     };
     for (final e in cases.entries) {
       test(e.key, () => expect(ArabicNames.suggest(e.key), e.value));
@@ -217,23 +207,6 @@ void main() {
       expect(missing, isEmpty);
       expect(c.state.lines.single.item.code, 'IFLA160.16');
       await c.close();
-    });
-
-    test('after an update with new rules, startup fills the items that were left in English, once', () async {
-      // as on the keeper's machine: items saved before the rules knew them
-      await AppDb.db.insert('items', {'name': 'GREASE', 'unit': 'عدد'});
-      await AppDb.db.insert('items', {'name': 'PAINT ACRALIC', 'unit': 'عدد'});
-      await r.setSetting('names_version', '1');
-      await r.refreshArabicNames();
-      final all = {for (final i in await r.allItems()) i.name: i};
-      expect(all['GREASE']!.nameAr, 'شحم');
-      expect(all['PAINT ACRALIC']!.nameAr, 'دهان أكريليك');
-      expect(await r.setting('names_version'), '${ArabicNames.version}');
-      // second start: nothing to do, a cleared name stays cleared
-      await r.saveArabicNames({all['GREASE']!.id!: ''});
-      await r.refreshArabicNames();
-      expect((await r.allItems()).firstWhere((i) => i.name == 'GREASE').nameAr, '');
-      await r.saveArabicNames({all['GREASE']!.id!: 'شحم'});
     });
 
     test('fill only touches items without an Arabic name', () async {

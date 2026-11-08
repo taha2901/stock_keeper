@@ -273,14 +273,6 @@ class Repo {
     notify();
   }
 
-  /// At startup: when the naming rules learned new items since the last run, gives
-  /// them their Arabic names once. Names already set (or typed) are never touched.
-  Future<void> refreshArabicNames() async {
-    if ((int.tryParse(await setting('names_version')) ?? 1) >= ArabicNames.version) return;
-    if (await AppDb.fillArabicNames(_db) > 0) notify();
-    await setSetting('names_version', '${ArabicNames.version}');
-  }
-
   /// Fills the Arabic name of every item that has none. Returns how many were filled.
   Future<int> fillArabicNames() async {
     _guard();
