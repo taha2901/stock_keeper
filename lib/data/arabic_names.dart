@@ -35,12 +35,28 @@ class ArabicNames {
 
   static String _join(List<String> parts) => parts.where((p) => p.isNotEmpty).join(' ');
 
+  /// Bumped whenever the rules learn new items: items still without an Arabic
+  /// name are filled again once on the next start.
+  static const version = 2;
+
+  /// Inch sizes: 3/4" -> "3/4 بوصة".
+  static String? _inch(String u) {
+    final m = RegExp(r'(\d+(?:\s*\d+)?/\d+|\d+(?:\.\d+)?)\s*(?:"|' "''" r'|INCH(?:ES)?\b|IN\b)').firstMatch(u);
+    return m == null ? null : '${m[1]!.replaceAll(RegExp(r'\s+'), ' ')} بوصة';
+  }
+
   /// The Arabic name for [english], or '' when it isn't recognised.
   static String suggest(String english) {
     if (english.trim().isEmpty || isArabic(english)) return '';
     final u = _clean(english);
+    final s = _suggest(u);
+    return s.isNotEmpty && RegExp(r'\bUSED\b').hasMatch(u) ? '$s (مستعمل)' : s;
+  }
+
+  static String _suggest(String u) {
     bool has(String p) => RegExp(p).hasMatch(u);
     final d = _dims(u);
+    String? num(String re) => RegExp(re).firstMatch(u)?[1];
 
     // ---- valves and their accessories (sizes are DN = the PDF's "قطر") ----
     if (has(r'SPINDLE')) {
@@ -50,8 +66,8 @@ class ArabicNames {
       final len = cm != null ? '$cm سم' : (mm != null ? '$mm مم' : '');
       return _join(['عمود تطويل', if (valve != null) 'لمحبس ${_size([valve])}', if (len.isNotEmpty) '- طول $len']);
     }
-    String valve(String kind) => _join([kind, _size(d)]);
-    if (has(r'GATE VALVE|SLUICE VALVE')) return valve('محبس');
+    String valve(String kind) => _join([kind, d.isNotEmpty ? _size(d) : (_inch(u) ?? '')]);
+    if (has(r'GATE\s*VALVE|SLUICE\s*VALVE')) return valve('محبس');
     if (has(r'BUTTERFLY')) return valve('محبس فراشة');
     if (has(r'AIR (RELEASE )?VALVE|AIR VALVE')) return valve('محبس هواء');
     if (has(r'CHECK VALVE|NON.?RETURN')) return valve('محبس عدم رجوع');
@@ -69,9 +85,60 @@ class ArabicNames {
     if (has(r'TAPE')) {
       if (has(r'ELECTRIC')) return 'شريط كهرباء';
       if (has(r'WARN')) return 'شريط تحذيري';
+      if (has(r'TEFLON|PTFE')) return 'شريط تفلون';
+      if (has(r'DENSO|WRAP')) return 'شريط تغليف';
+      if (has(r'DUCT|ADHESIVE')) return 'شريط لاصق';
+      if (has(r'MEASUR')) return 'شريط قياس (متر)';
       return '';
     }
     if (has(r'ELECTRIC') && has(r'SOCKET')) return 'فيشة كهرباء';
+    if (has(r'EXTENSION (CABLE|CORD|WIRE|REEL)')) return 'وصلة كهرباء';
+
+    // ---- site, safety and office items ----
+    if (has(r'\bVESTS?\b')) {
+      return _join(['سترة سلامة', if (has(r'ENGR|ENGINEER')) 'للمهندسين', if (has(r'LABOU?R|WORKER')) 'للعمال']);
+    }
+    if (has(r'HELMET|HARD ?HAT')) return 'خوذة سلامة';
+    if (has(r'GLOVE')) return 'جوانتي';
+    if (has(r'SAFETY (SHOE|BOOT)|\bBOOTS?\b')) return 'حذاء سلامة';
+    if (has(r'GOGGLE|SAFETY GLASS')) return 'نظارة سلامة';
+    if (has(r'\bMASKS?\b')) return 'كمامة';
+    if (has(r'EXTINGUISHER')) return 'طفاية حريق يدوية';
+    if (has(r'NEW\s*JERSE?Y')) {
+      final m = num(r'(\d+(?:\.\d+)?)\s*(?:MTRS?|METERS?|M)\b');
+      return _join(['حاجز نيوجيرسي', if (has(r'PLASTIC')) 'بلاستيك', if (has(r'CONCRETE')) 'خرساني', if (m != null) '$m متر']);
+    }
+    if (has(r'\bCONES?\b')) return 'قمع مرور';
+    if (has(r'SIGN\s*BOARD|\bSIGNS?\b')) return has(r'PROJECT') ? 'لوحة المشروع' : 'لوحة إرشادية';
+    if (has(r'\bTABLE\b|\bDESK\b')) {
+      final cm = num(r'(\d+)\s*CM\b');
+      return _join([has(r'OFFICE|DESK') ? 'مكتب' : 'طاولة', if (has(r'WOOD')) 'خشب', if (has(r'EXTENSION')) 'بامتداد', if (cm != null) '$cm سم']);
+    }
+    if (has(r'\bCHAIRS?\b')) return _join(['كرسي', if (has(r'OFFICE')) 'مكتب', if (has(r'PLASTIC')) 'بلاستيك']);
+    if (has(r'WATER COOLER|COOLER')) return 'كولر مياه';
+    if (has(r'GENERATOR')) return 'مولد كهرباء';
+    if (has(r'WATER METER')) return _join(['عداد مياه', d.isNotEmpty ? _size(d) : (_inch(u) ?? '')]);
+    if (has(r'GREASE')) return 'شحم';
+    if (has(r'THINNER')) return 'تنر';
+    if (has(r'PRIMER')) return 'برايمر';
+    if (has(r'BRUSH')) return 'فرشاة دهان';
+    if (has(r'PAINT')) {
+      return _join(['دهان', if (has(r'ACR[YA]LIC')) 'أكريليك', if (has(r'\bOIL')) 'زيتي', if (has(r'SPRAY')) 'سبراي', if (has(r'ROAD|MARKING')) 'تخطيط طرق']);
+    }
+    if (has(r'SILICON')) return 'سيليكون';
+    if (has(r'SOLVENT CEMENT|PVC GLUE|\bGLUE\b')) return 'غراء';
+    if (has(r'CEMENT')) return 'أسمنت';
+    if (has(r'\bSAND\b')) return 'رمل';
+    if (has(r'GRAVEL|AGGREGATE')) return 'بحص';
+    if (has(r'PLYWOOD')) return 'خشب أبلكاش';
+    if (has(r'\bNAILS?\b')) return 'مسامير خشب';
+    if (has(r'\bROPE\b')) return 'حبل';
+    if (has(r'\bHOSE\b')) return 'خرطوم';
+    if (has(r'SHOVEL')) return 'كوريك';
+    if (has(r'WHEEL\s*BARROW')) return 'عربية يد';
+    if (has(r'LADDER')) return 'سلم';
+    if (has(r'HAMMER')) return 'شاكوش';
+    if (has(r'BUCKET')) return 'جردل';
 
     // ---- fittings ----
     if (has(r'REDUC\w* TEE|TEE REDUC')) {
@@ -94,6 +161,7 @@ class ArabicNames {
     if (has(r'END CAP|\bCAP\b')) return _join(['طبة نهاية', _size(d)]);
     if (has(r'SADDLE')) return _join(['سرج', _size(d)]);
     if (has(r'GASKET')) return _join(['جوان', _size(d)]);
+    if (has(r'COIL')) return _join(['مواسير لفة', _size(d)]);
     if (has(r'PIPE')) return _join(['مواسير', _size(d)]);
     if (has(r'MARKER')) return 'علامة إرشادية';
     return '';

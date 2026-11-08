@@ -14,6 +14,7 @@ Future<void> main() async {
   Repo.i.writable = await LicenseService.load();
   await Repo.i.loadCurrentWarehouse();
   await Repo.i.loadNameMode();
+  await Repo.i.refreshArabicNames();
   runApp(const App());
 }
 
